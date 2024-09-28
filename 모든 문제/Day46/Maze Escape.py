@@ -1,45 +1,49 @@
-from collections import deque
+import heapq
 
-def solution(maps):
-    answer = 0
+INF = 10**8 + 10
+d = [[INF] * 1024 for _ in range(1004)]
+adj = [[] for _ in range(1004)]
+adjrev = [[] for _ in range(1004)]
+trapidx = [-1] * 1004
+
+def bitmask(state, idx):
+    return (1 << trapidx[idx]) & state
+
+def solution(n, start, end, roads, traps):
+    for u, v, val in roads:
+        adj[u].append((v,val))
+        adjrev[v].append((u,val))
     
-    graph = [list(m) for m in maps]
-
-    def bfs(start, end):
-        visited = [[0 for _ in range(M)] for _ in range(N)]
-        queue = deque()
-        queue.append(start)
+    for i in range(len(traps)):
+        trapidx[traps[i]] = i
+    
+    heap = []
+    d[start][0] = 0
+    heapq.heappush(heap, (d[start][0], start, 0))
+    while heap:
+        val, idx, state = heapq.heappop(heap)
+        if idx == end: return val
+        if d[idx][state] != val: continue
+        for nxt, dist in adj[idx]:
+            rev = 0
+            if trapidx[idx] != -1 and bitmask(state, idx): rev ^= 1
+            if trapidx[nxt] != -1 and bitmask(state, nxt): rev ^= 1
+            if rev: continue 
+            nxt_state = state
+            if trapidx[nxt] != -1: nxt_state ^= (1 << trapidx[nxt])
+            if d[nxt][nxt_state] > dist + val:
+                d[nxt][nxt_state] = dist + val
+                heapq.heappush(heap, (d[nxt][nxt_state], nxt, nxt_state))
         
-        while (queue):
-            now = queue.popleft()
-            for i in range(len(move)):
-                nextRow = now[0] + move[i][0]
-                nextCol = now[1] + move[i][1]
-                if (0 <= nextRow < N) and (0 <= nextCol < M) and (not visited[nextRow][nextCol]) and (graph[nextRow][nextCol] != 'X'):
-                    visited[nextRow][nextCol] = visited[now[0]][now[1]] + 1
-                    queue.append([nextRow, nextCol])
+        for nxt, dist in adjrev[idx]:
+            rev = 0
+            if trapidx[idx] != -1 and bitmask(state, idx): rev ^= 1 
+            if trapidx[nxt] != -1 and bitmask(state, nxt): rev ^= 1
+            if not rev: continue
+            nxt_state = state
+            if trapidx[nxt] != -1: nxt_state ^= (1 << trapidx[nxt])
+            if d[nxt][nxt_state] > dist + val:
+                d[nxt][nxt_state] = dist + val
+                heapq.heappush(heap, (d[nxt][nxt_state], nxt, nxt_state))
     
-        return visited[end[0]][end[1]]
-    
-    N = len(graph)
-    M = len(graph[0])
-    
-    for row in range(len(graph)):
-        if ('S' in graph[row]):
-            start = [row, graph[row].index('S')]
-        if ('L' in graph[row]):
-            lever = [row, graph[row].index('L')]
-        if ('E' in graph[row]):
-            end = [row, graph[row].index('E')]
-             
-    move = [[0, 1], [0, -1], [1, 0], [-1, 0]]
-    
-    distance1 = bfs(start, lever)
-    distance2 = bfs(lever, end)
-
-    if (distance1 == 0) or (distance2 == 0):
-        answer = -1
-    else:
-        answer = distance1 + distance2
-
-    return answer
+    return -1
